@@ -1,6 +1,5 @@
 {
   lib,
-  overlays,
   pkgs,
   ...
 }:
@@ -26,11 +25,6 @@ in
       "root"
       "wes"
     ];
-  };
-
-  nixpkgs = {
-    overlays = overlays;
-    config.allowUnfree = true;
   };
 
   boot.loader.grub = {
@@ -174,22 +168,37 @@ in
         ipAddress
         "--tls-san"
         "w530"
+        "--write-kubeconfig-mode"
+        "0644"
       ];
       autoDeployCharts = {
         argocd = {
           name = "argo-cd";
           repo = "https://argoproj.github.io/argo-helm";
-          version = "5.53.12";
-          hash = lib.fakeSha256; # pin after first build
+          version = "9.0.3";
+          hash = "sha256-0eP8dbsq+iwUSsRC39XcBTHYWcTLNT0AlhiSOl8FSsQ=";
+          targetNamespace = "argocd";
+          createNamespace = true;
           values.server.service = {
             # TODO: switch to Ingress later
             type = "NodePort";
             nodePortHttp = 30081;
           };
+          extraFieldDefinitions = {
+            spec.targetNamespace = "argocd";
+            spec.createNamespace = true;
+          };
         };
       };
 
       manifests = {
+        "argocd-ns".content = {
+          apiVersion = "v1";
+          kind = "Namespace";
+          metadata = {
+            name = "argocd";
+          };
+        };
         "argocd-bootstrap".content = {
           apiVersion = "argoproj.io/v1alpha1";
           kind = "Application";
@@ -215,6 +224,7 @@ in
                 selfHeal = true;
               };
               syncOptions = [ "CreateNamespace=true" ];
+
             };
           };
         };
