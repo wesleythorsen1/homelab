@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: whoami
+  namespace: argocd
+spec:
+  project: ops
+  source:
+    repoURL: https://github.com/wesleythorsen1/homelab
+    targetRevision: main
+    path: charts/whoami
+    helm:
+      values: |
+        service:
+          type: NodePort
+          nodePort: 30080
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: demo
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [ "CreateNamespace=true" ]

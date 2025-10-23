@@ -1,0 +1,12 @@
+# values.yaml
+nameOverride: ""
+fullnameOverride: ""
+replicaCount: 1
+image:
+  repository: containous/whoami
+  tag: latest
+  pullPolicy: IfNotPresent
+service:
+  type: ClusterIP
+  port: 80
+  nodePort: null
