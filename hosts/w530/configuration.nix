@@ -1,5 +1,4 @@
 {
-  lib,
   pkgs,
   ...
 }:
@@ -87,10 +86,12 @@ in
   };
 
   users.users = {
+    root = {
+      shell = pkgs.zsh;
+    };
     wes = {
       isNormalUser = true;
       extraGroups = [
-        # FIXME: move unnecessary perms to dev-shell
         "wheel"
         "docker"
         "kvm"
@@ -107,14 +108,34 @@ in
   };
 
   environment = {
+    shells = [ pkgs.zsh ];
+    loginShellInit = ''
+      # Only for interactive shells
+      case "$-" in
+        *i*) : ;;     # interactive
+        *)   return ;; # non-interactive login (e.g., ssh with a command)
+      esac
+
+      # Require a real terminal and skip "dumb"
+      [ -t 1 ] || return
+      [ "${"TERM:-"}" = "dumb" ] && return
+
+      # Run fastfetch if present
+      if command -v fastfetch >/dev/null 2>&1; then
+        fastfetch
+      fi
+    '';
+
     systemPackages = with pkgs; [
+      coreutils
       curl
+      fastfetch
+      git
       jq
+      nixos-rebuild # for building NixOS configs
       unzip
       wget
     ];
-
-    sessionVariables.ZDOTDIR = "/etc/zsh";
   };
 
   services = {
@@ -242,10 +263,50 @@ in
 
     zsh = {
       enable = true;
-      promptInit = "";
+      enableBashCompletion = true;
+      enableCompletion = true;
+      enableLsColors = true;
+      autosuggestions = {
+        enable = true;
+        async = true;
+      };
+      syntaxHighlighting = {
+        enable = true;
+      };
       interactiveShellInit = ''
-        PROMPT='%n@%m:%~ %# '
-        setopt NO_RCS
+        setopt prompt_subst
+        . ${../modules/zsh/posh-git.zsh}
+        PROMPT='%n@%m %1~$(git_prompt_info) » '
+      '';
+      shellAliases = {
+        c = "clear";
+        l = "eza -la";
+        lt = "eza -laT -I=.git";
+        v = "nvim";
+        na = "nixos-rebuild switch --verbose -L --flake "; # . -c dev-shell
+      };
+      # ohMyZsh = {
+      #   enable = true;
+      #   theme = "minimal";
+      #   # TODO: setup to match home-manager
+      #   plugins = [
+      #     "git-open"
+      #     "deno"
+      #   ];
+      #   custom = [
+      #     "${config.home.homeDirectory}/.oh-my-zsh-custom"
+      #   ];
+      # };
+    };
+
+    bash = {
+      enable = true;
+      promptInit = ''
+        case "$-" in *i*) ;; *) return ;; esac
+        . ${../modules/zsh/posh-git.zsh}
+        __posh_prompt_prefix="\u@\h \W "
+        __posh_prompt_suffix=" » "
+        PROMPT_COMMAND='__posh_git_ps1 "$__posh_prompt_prefix" "$__posh_prompt_suffix"'
       '';
     };
 
@@ -336,38 +397,6 @@ in
       iotop.enable = true;
       mtr.enable = true;
       nexttrace.enable = true;
-
-      zsh = {
-        enable = true;
-        enableBashCompletion = true;
-        enableCompletion = true;
-        enableGlobalCompInit = true;
-        enableLsColors = true;
-        autosuggestions = {
-          enable = true;
-          async = true;
-        };
-        syntaxHighlighting = {
-          enable = true;
-        };
-        ohMyZsh = {
-          enable = true;
-          theme = "minimal";
-          # TODO: setup to match home-manager
-          # plugins = [
-          #   "git-open"
-          #   "deno"
-          # ];
-          # custom = [
-          #   "${config.home.homeDirectory}/.oh-my-zsh-custom"
-          # ];
-        };
-        shellAliases = {
-          c = "clear";
-          l = "eza -la";
-          lt = "eza -laT -I=.git";
-        };
-      };
 
       git = {
         enable = true;
