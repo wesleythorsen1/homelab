@@ -320,7 +320,6 @@ in
     };
 
     bash = {
-      enable = true;
       promptInit = ''
         case "$-" in *i*) ;; *) return ;; esac
         . ${../modules/zsh/posh-git.zsh}
