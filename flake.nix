@@ -22,7 +22,12 @@
     {
       nixosConfigurations = {
         "w530" = nixpkgs.lib.nixosSystem {
-          specialArgs = { inherit inputs outputs self; };
+          specialArgs = {
+            inherit inputs outputs self;
+            hostName = "w530";
+            ipAddress = "100.71.196.98";
+            kubeConfig = "/etc/rancher/k3s/k3s.yaml";
+          };
           modules = [
             ./hosts/w530/configuration.nix
           ];

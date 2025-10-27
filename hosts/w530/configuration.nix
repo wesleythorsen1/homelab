@@ -1,13 +1,14 @@
 {
   lib,
   pkgs,
+  hostName,
+  ipAddress,
+  kubeConfig,
   ...
 }:
 
 let
   toLua = str: "lua << EOF\n${str}\nEOF\n";
-
-  ipAddress = "100.71.196.98";
 in
 {
   imports = [
@@ -37,7 +38,7 @@ in
   };
 
   networking = {
-    hostName = "w530";
+    hostName = hostName;
     networkmanager.enable = true;
     firewall = {
       enable = true;
@@ -62,6 +63,17 @@ in
 
   systemd = {
     defaultUnit = "multi-user.target";
+
+    # create kubeconfig symlinks so kubectl works even if env isn’t loaded
+    tmpfiles.rules = [
+      # root
+      "d /root/.kube 0750 root root - -"
+      "L+ /root/.kube/config - - - - ${kubeConfig}"
+
+      # wes
+      "d /home/wes/.kube 0750 wes users - -"
+      "L+ /home/wes/.kube/config - - - - ${kubeConfig}"
+    ];
 
     services.fetch-tailscale-key = {
       description = "Fetch Tailscale auth key from Mac (temporary bootstrap)";
@@ -144,6 +156,13 @@ in
       fi
     '';
 
+    variables = {
+      KUBECONFIG = kubeConfig;
+    };
+    sessionVariables = {
+      KUBECONFIG = kubeConfig;
+    };
+
     systemPackages = with pkgs; [
       coreutils
       curl
@@ -151,6 +170,8 @@ in
       fastfetch
       git
       jq
+      kubectl
+      kubernetes-helm
       nixos-rebuild # for building NixOS configs
       traceroute
       unzip
@@ -205,12 +226,10 @@ in
       extraFlags = [
         "--disable traefik"
         "--disable local-storage"
-        "--tls-san"
-        ipAddress
-        "--tls-san"
-        "w530"
-        "--write-kubeconfig-mode"
-        "0644"
+        "--tls-san ${ipAddress}"
+        "--tls-san ${hostName}"
+        "--write-kubeconfig-mode 0644"
+        "--write-kubeconfig ${kubeConfig}"
       ];
       autoDeployCharts = {
         argocd = {
