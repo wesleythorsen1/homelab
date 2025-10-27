@@ -1,9 +1,9 @@
 {
   lib,
   pkgs,
-  hostName,
-  ipAddress,
-  kubeConfig,
+  hostName, # "w530"
+  ipAddress, # "100.71.196.98"
+  kubeConfig, # "/etc/rancher/k3s/k3s.yaml"
   ...
 }:
 
@@ -15,7 +15,9 @@ in
     ./hardware-configuration.nix
   ];
 
-  system.stateVersion = "25.05";
+  system = {
+    stateVersion = "25.05";
+  };
 
   nix = {
     settings = {
@@ -39,7 +41,9 @@ in
 
   networking = {
     hostName = hostName;
-    networkmanager.enable = true;
+    networkmanager = {
+      enable = true;
+    };
     firewall = {
       enable = true;
       allowedTCPPorts = [
@@ -222,7 +226,9 @@ in
       enable = true;
       role = "server";
       clusterInit = false; # single node (SQLite)
-      gracefulNodeShutdown.enable = true;
+      gracefulNodeShutdown = {
+        enable = true;
+      };
       extraFlags = [
         "--disable traefik"
         "--disable local-storage"

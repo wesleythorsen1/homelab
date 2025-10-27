@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: arc-controller
+  namespace: argocd
+spec:
+  project: ops
+  source:
+    chart: gha-runner-scale-set-controller
+    repoURL: oci://ghcr.io/actions/actions-runner-controller-charts
+    targetRevision: 0.13.0
+    helm:
+      oci: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ci
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: ["CreateNamespace=true"]

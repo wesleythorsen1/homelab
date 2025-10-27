@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: arc-runner-scaleset
+  namespace: argocd
+spec:
+  project: ops
+  source:
+    chart: gha-runner-scale-set
+    repoURL: oci://ghcr.io/actions/actions-runner-controller-charts
+    targetRevision: 0.13.0
+    helm:
+      oci: true
+      values: |
+        runnerScaleSetName: homelab
+        githubConfigUrl: https://github.com/wesleythorsen1  # or a single repo URL
+        minRunners: 0
+        maxRunners: 4
+        containerMode:
+          type: "dind"  # docker-in-docker for building containers
+        githubConfigSecret: "arc-github-secret"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ci
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+
+# Create the PAT secret (one-time):
+# kubectl -n ci create secret generic arc-github-secret \
+#   --from-literal=github_token=ghp_your_PAT_here
