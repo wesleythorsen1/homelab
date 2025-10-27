@@ -1,4 +1,5 @@
 {
+  lib,
   pkgs,
   ...
 }:
@@ -15,15 +16,18 @@ in
 
   system.stateVersion = "25.05";
 
-  nix.settings = {
-    experimental-features = [
-      "nix-command"
-      "flakes"
-    ];
-    trusted-users = [
-      "root"
-      "wes"
-    ];
+  nix = {
+    settings = {
+      experimental-features = [
+        "nix-command"
+        "flakes"
+      ];
+      trusted-users = [
+        "root"
+        "wes"
+      ];
+    };
+    nixPath = lib.mkForce [ ]; # not needed for flake
   };
 
   boot.loader.grub = {
@@ -69,20 +73,34 @@ in
         Type = "oneshot";
         ExecStart = pkgs.writeShellScript "fetch-tailscale-key" ''
           set -euo pipefail
-          install -d -m 700 /run/keys
+          install -d -m 700 /var/lib/keys
           ${pkgs.curl}/bin/curl -fsS "http://crackbookpro.local/tailscale_key" \
-            -o /run/keys/tailscale_key
-          chmod 600 /run/keys/tailscale_key
+            -o /var/lib/keys/tailscale_key
+          chmod 600 /var/lib/keys/tailscale_key
         '';
       };
       wantedBy = [ "multi-user.target" ];
-      unitConfig.ConditionPathExists = "!/run/keys/tailscale_key";
+      unitConfig.ConditionPathExists = "!/var/lib/keys/tailscale_key";
     };
   };
 
   security.sudo = {
     enable = true;
-    wheelNeedsPassword = false; # FIXME: not safe
+    extraRules = [
+      # DELETEME: not safe
+      {
+        users = [ "wes" ];
+        commands = [
+          {
+            command = "ALL";
+            options = [
+              "SETENV"
+              "NOPASSWD"
+            ];
+          }
+        ];
+      }
+    ];
   };
 
   users.users = {
@@ -129,10 +147,12 @@ in
     systemPackages = with pkgs; [
       coreutils
       curl
+      exiftool
       fastfetch
       git
       jq
       nixos-rebuild # for building NixOS configs
+      traceroute
       unzip
       wget
     ];
@@ -167,7 +187,7 @@ in
     tailscale = {
       enable = true;
       openFirewall = true;
-      authKeyFile = "/run/keys/tailscale_key";
+      authKeyFile = "/var/lib/keys/tailscale_key";
       useRoutingFeatures = "server";
       extraUpFlags = [
         "--ssh"
@@ -354,19 +374,6 @@ in
   };
 
   specialisation.dev-shell.configuration = {
-    security.sudo.extraRules = [
-      # FIXME: not safe
-      {
-        users = [ "wes" ];
-        commands = [
-          {
-            command = "ALL";
-            options = [ "NOPASSWD" ];
-          }
-        ];
-      }
-    ];
-
     environment = {
       systemPackages = with pkgs; [
         btop
@@ -377,7 +384,9 @@ in
         lsof
         lua-language-server
         nftables
+        nix-tree
         nixd
+        nixfmt-rfc-style
         nmap
         nodejs_24
         nodePackages.typescript
